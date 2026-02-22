@@ -4,7 +4,14 @@
 import express from 'express';
 import { WebSocketServer } from 'ws';
 import http from 'http';
-import prisma from './lib/prisma.js';
+let prisma = null;
+try {
+  const mod = await import('./lib/prisma.js');
+  prisma = mod.default;
+  console.log('[DB] Prisma connected');
+} catch (e) {
+  console.warn('[DB] Prisma unavailable — DB-backed routes will return 503:', e.message);
+}
 
 const PORT = process.env.PORT ?? 3001;
 const N8N_API_URL = process.env.N8N_API_URL ?? '';
@@ -13,6 +20,10 @@ const N8N_API_KEY = process.env.N8N_API_KEY ?? '';
 // In-memory VideoJob store — survives hot reloads
 globalThis.__videoJobStore ??= new Map();
 const videoJobStore = globalThis.__videoJobStore;
+
+function dbRequired(res) {
+  res.status(503).json({ error: 'Database not available' });
+}
 
 const app = express();
 app.use(express.json());
@@ -33,6 +44,7 @@ const path = await import('path');
 
 // Burn-in stub: sets burnedVideoUrl = job.videoUrl (real FFmpeg wired later)
 async function runBurnIn(job, caption) {
+  if (!prisma) { console.warn('[burn-in] skipped — no DB'); return; }
   try {
     await prisma.videoCaption.update({
       where: { id: caption.id },
@@ -586,6 +598,7 @@ app.get('/health', (_req, res) => {
 // ── Video Jobs ────────────────────────────────────────────────────────────────
 
 app.get('/api/video-jobs', async (req, res) => {
+  if (!prisma) return dbRequired(res);
   const { accountId, status } = req.query;
   try {
     const where = {};
@@ -629,6 +642,7 @@ app.post('/api/video-jobs', (req, res) => {
 });
 
 app.get('/api/video-jobs/:id', async (req, res) => {
+  if (!prisma) return dbRequired(res);
   try {
     const job = await prisma.videoJob.findUnique({
       where:   { id: req.params.id },
@@ -660,6 +674,7 @@ app.patch('/api/video-jobs/:id', (req, res) => {
 });
 
 app.post('/api/burn-in', async (req, res) => {
+  if (!prisma) return dbRequired(res);
   const { videoJobId, captionText, stylePreset, position, safeArea } = req.body ?? {};
   if (!videoJobId || !captionText) {
     return res.status(400).json({ error: 'videoJobId and captionText are required' });
@@ -690,6 +705,7 @@ app.post('/api/burn-in', async (req, res) => {
 });
 
 app.post('/api/publish', async (req, res) => {
+  if (!prisma) return dbRequired(res);
   const { videoJobId, platforms, caption, scheduledFor } = req.body ?? {};
   if (!videoJobId || !Array.isArray(platforms) || platforms.length === 0) {
     return res.status(400).json({ error: 'videoJobId and platforms[] are required' });
@@ -732,6 +748,7 @@ app.post('/api/publish', async (req, res) => {
 });
 
 app.post('/api/n8n/callback', async (req, res) => {
+  if (!prisma) return dbRequired(res);
   const { videoJobId, accountId, title, workflowRunId, videoUrl, thumbUrl, durationSeconds, status, notes } = req.body ?? {};
   try {
     if (videoJobId) {
