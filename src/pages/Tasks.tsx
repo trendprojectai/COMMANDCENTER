@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react';
 
+type Task = {
+  id: string;
+  title: string;
+  description?: string;
+  status?: string;
+  progress?: number;
+  priority?: string;
+};
+
 export function Tasks() {
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [wsConnected, setWsConnected] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -41,7 +50,7 @@ export function Tasks() {
     return () => ws.close();
   }, []);
 
-  function addTask(e) {
+  function addTask(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
     setLoading(true);
