@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "start": "node server/index.js"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
