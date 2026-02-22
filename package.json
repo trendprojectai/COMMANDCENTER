@@ -7,7 +7,7 @@
     "dev": "concurrently \"node --env-file .env server/index.js\" \"vite\" --names \"server,vite\" --prefix-colors \"cyan,magenta\"",
     "dev:ui": "vite",
     "dev:server": "node --env-file .env server/index.js",
-    "build": "tsc && vite build",
+    "build": "prisma generate && tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "db:migrate": "prisma migrate dev",

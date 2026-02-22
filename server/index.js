@@ -7,8 +7,13 @@ import http from 'http';
 let prisma = null;
 try {
   const mod = await import('./lib/prisma.js');
-  prisma = mod.default;
-  console.log('[DB] Prisma connected');
+  prisma = await (mod.getPrisma?.() ?? Promise.resolve(mod.default));
+  if (prisma) {
+    console.log('[DB] Prisma connected');
+  } else {
+    const err = mod.getPrismaInitError?.();
+    console.warn('[DB] Prisma unavailable — DB-backed routes will return 503:', err?.message ?? 'unknown error');
+  }
 } catch (e) {
   console.warn('[DB] Prisma unavailable — DB-backed routes will return 503:', e.message);
 }
