@@ -87,7 +87,7 @@ export function VideoReview() {
   const { jobs, selectedJob, setSelectedJob, loading, error, fetchJobs, refreshSelected } = useVideoJobs();
 
   // Left-column filters
-  const [accountFilter, setAccountFilter] = useState('');
+  const [accountFilter, setAccountFilter] = useState('9to5doggo');
   const [statusFilter,  setStatusFilter]  = useState<VideoStatus | ''>('');
   const [searchQuery,   setSearchQuery]   = useState('');
 
@@ -116,6 +116,14 @@ export function VideoReview() {
       fetchJobs(accountFilter || undefined, statusFilter || undefined);
     }, 400);
     return () => clearTimeout(t);
+  }, [accountFilter, statusFilter, fetchJobs]);
+
+  // Poll for new jobs every 10 seconds
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetchJobs(accountFilter || undefined, statusFilter || undefined);
+    }, 10_000);
+    return () => clearInterval(id);
   }, [accountFilter, statusFilter, fetchJobs]);
 
   // Reset burn state when job changes
