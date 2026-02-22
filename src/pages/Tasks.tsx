@@ -11,7 +11,6 @@ type Task = {
 
 export function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [wsConnected, setWsConnected] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
@@ -28,8 +27,6 @@ export function Tasks() {
     const host = window.location.hostname || 'localhost';
     const port = 3001; // server ws port
     const ws = new WebSocket(`${proto}://${host}:${port}`);
-    ws.addEventListener('open', () => setWsConnected(true));
-    ws.addEventListener('close', () => setWsConnected(false));
     ws.addEventListener('message', (ev) => {
       try {
         const data = JSON.parse(ev.data);
