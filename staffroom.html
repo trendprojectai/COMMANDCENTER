@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Room</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body { background: radial-gradient(ellipse at 50% 0%, #C8E8FF 0%, #A8D4F0 55%, #88BEDD 100%); }
+    #viewport { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+    #scene { position: absolute; left: 50%; top: 50%; transform-origin: center center; pointer-events: none; }
+
+    /* ── Animations ─────────────────────────────────────────────────── */
+
+    @keyframes shark-swim {
+      0%   { transform: translateX(0px)  translateY(0px)  scaleX(1);  }
+      47%  { transform: translateX(72px) translateY(-3px) scaleX(1);  }
+      50%  { transform: translateX(74px) translateY(-3px) scaleX(-1); }
+      97%  { transform: translateX(2px)  translateY(2px)  scaleX(-1); }
+      100% { transform: translateX(0px)  translateY(0px)  scaleX(1);  }
+    }
+    @keyframes jelly-bob {
+      0%   { transform: translateY(0px)   scale(1.00); }
+      30%  { transform: translateY(-9px)  scale(1.05); }
+      60%  { transform: translateY(-4px)  scale(0.97); }
+      100% { transform: translateY(0px)   scale(1.00); }
+    }
+    @keyframes jelly-tentacle {
+      0%, 100% { height: 13px; opacity: 0.7; }
+      50%       { height: 7px;  opacity: 0.3; }
+    }
+    @keyframes bubble-rise {
+      0%   { transform: translateY(0px)   translateX(0px);  opacity: 0.75; }
+      50%  { transform: translateY(-16px) translateX(2px);  opacity: 0.55; }
+      100% { transform: translateY(-32px) translateX(-1px); opacity: 0;    }
+    }
+    @keyframes seaweed-sway {
+      0%, 100% { transform: rotate(-5deg); }
+      50%       { transform: rotate(5deg);  }
+    }
+    @keyframes water-shimmer {
+      0%   { opacity: 0.10; transform: scaleX(1.0); }
+      50%  { opacity: 0.30; transform: scaleX(1.6); }
+      100% { opacity: 0.10; transform: scaleX(1.0); }
+    }
+    @keyframes fish-swim-a {
+      0%   { left: 2px;               transform: scaleX(1);  }
+      47%  { left: calc(100% - 14px); transform: scaleX(1);  }
+      50%  { left: calc(100% - 14px); transform: scaleX(-1); }
+      97%  { left: 2px;               transform: scaleX(-1); }
+      100% { left: 2px;               transform: scaleX(1);  }
+    }
+    @keyframes fish-swim-b {
+      0%   { left: calc(100% - 12px); transform: scaleX(-1); }
+      47%  { left: 2px;               transform: scaleX(-1); }
+      50%  { left: 2px;               transform: scaleX(1);  }
+      97%  { left: calc(100% - 12px); transform: scaleX(1);  }
+      100% { left: calc(100% - 12px); transform: scaleX(-1); }
+    }
+    @keyframes fish-swim-c {
+      0%   { left: 10px;              transform: scaleX(1);  }
+      45%  { left: calc(100% - 10px); transform: scaleX(1);  }
+      50%  { left: calc(100% - 10px); transform: scaleX(-1); }
+      95%  { left: 10px;              transform: scaleX(-1); }
+      100% { left: 10px;              transform: scaleX(1);  }
+    }
+    @keyframes steam-rise {
+      0%   { transform: translateY(0px)   translateX(0px)  scaleX(1.0); opacity: 0.5; }
+      50%  { transform: translateY(-8px)  translateX(2px)  scaleX(1.6); opacity: 0.2; }
+      100% { transform: translateY(-16px) translateX(-1px) scaleX(0.7); opacity: 0;   }
+    }
+    @keyframes water-trickle {
+      0%   { height: 0px;  opacity: 0.9; top: 4px;  }
+      55%  { height: 11px; opacity: 0.7; top: 4px;  }
+      100% { height: 11px; opacity: 0;   top: 15px; }
+    }
+    @keyframes ripple {
+      0%   { transform: scale(0.2); opacity: 0.7; }
+      100% { transform: scale(2.2); opacity: 0;   }
+    }
+    @keyframes char-bob {
+      0%, 100% { transform: translateY(0px);  }
+      50%       { transform: translateY(-2px); }
+    }
+    @keyframes plant-sway {
+      0%, 100% { transform: rotate(0deg);     }
+      33%       { transform: rotate(1.8deg);  }
+      66%       { transform: rotate(-1.2deg); }
+    }
+    @keyframes globe-spin {
+      from { transform: rotate(0deg);   }
+      to   { transform: rotate(360deg); }
+    }
+    @keyframes pulse-water {
+      0%, 100% { opacity: 0.8; }
+      50%       { opacity: 1.0; }
+    }
+    @keyframes vend-pulse {
+      0%, 100% { opacity: 0.7; }
+      50%       { opacity: 1.0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="viewport"><div id="scene"></div></div>
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const TW = 64, TH = 32;
+const COLS = 14, ROWS = 10;
+const OX = (ROWS - 1) * (TW / 2) + TW / 2;  // 320
+const OY = 0;
+const GW = (COLS + ROWS - 2) * (TW / 2) + TW;  // 768
+const GH = (COLS + ROWS - 2) * (TH / 2) + TH;  // 384
+const WALL_H = 70, WALL_PH = WALL_H + TH / 2;   // 86
+
+// ── Math ──────────────────────────────────────────────────────────────────────
+const ts  = (c, r) => ({ left: OX + (c - r) * (TW/2) - TW/2, top: OY + (c + r) * (TH/2) });
+const zF  = (c, r) => c + r;
+const zO  = (c, r) => c + r + 100;
+const zS  = (c, r) => c + r + 200;
+
+// ── DOM ───────────────────────────────────────────────────────────────────────
+function el(styles, ...kids) {
+  const d = document.createElement('div');
+  if (styles) Object.assign(d.style, styles);
+  kids.forEach(k => k && d.appendChild(k));
+  return d;
+}
+function shade(hex, amt) {
+  const n = parseInt(hex.replace('#',''), 16);
+  const r = Math.max(0, Math.min(255, (n >> 16) + amt));
+  const g = Math.max(0, Math.min(255, ((n >> 8) & 0xFF) + amt));
+  const b = Math.max(0, Math.min(255, (n & 0xFF) + amt));
+  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+// ── IsoBox geometry ───────────────────────────────────────────────────────────
+function boxGeo(span, boxH) {
+  const cH = TH + boxH;
+  if (span === 1) return {
+    cW: TW, cH, ox: 0,
+    tc: `polygon(${TW/2}px 0px, ${TW}px ${TH/2}px, ${TW/2}px ${TH}px, 0px ${TH/2}px)`,
+    lc: `polygon(0px ${TH/2}px, ${TW/2}px ${TH}px, ${TW/2}px ${cH}px, 0px ${TH/2+boxH}px)`,
+    rc: `polygon(${TW/2}px ${TH}px, ${TW}px ${TH/2}px, ${TW}px ${TH/2+boxH}px, ${TW/2}px ${cH}px)`,
+  };
+  if (span === 2) {
+    const W = Math.round(TW * 1.5), mid = Math.round(W / 2);  // 96, 48
+    return {
+      cW: W, cH, ox: -(TW/2),
+      tc: `polygon(0px ${TH/2}px, ${mid}px 0px, ${W}px ${TH/2}px, ${mid}px ${TH}px)`,
+      lc: `polygon(0px ${TH/2}px, ${mid}px ${TH}px, ${mid}px ${cH}px, 0px ${TH/2+boxH}px)`,
+      rc: `polygon(${mid}px ${TH}px, ${W}px ${TH/2}px, ${W}px ${TH/2+boxH}px, ${mid}px ${cH}px)`,
+    };
+  }
+  // N-span generalised
+  const W = TW + (span-1) * (TW/2), mid = W / 2;
+  return {
+    cW: W, cH, ox: -(span-1) * (TW/2),
+    tc: `polygon(0px ${TH/2}px, ${mid}px 0px, ${W}px ${TH/2}px, ${mid}px ${TH}px)`,
+    lc: `polygon(0px ${TH/2}px, ${mid}px ${TH}px, ${mid}px ${cH}px, 0px ${TH/2+boxH}px)`,
+    rc: `polygon(${mid}px ${TH}px, ${W}px ${TH/2}px, ${W}px ${TH/2+boxH}px, ${mid}px ${cH}px)`,
+  };
+}
+
+// ── Tile ──────────────────────────────────────────────────────────────────────
+// Center area (cols 2-7, rows 3-7) gets slightly warmer tones to suggest a rug
+const RUG_COLS = [2,3,4,5,6,7], RUG_ROWS = [3,4,5,6,7];
+function tile(c, r) {
+  const { left, top } = ts(c, r);
+  const even  = (c + r) % 2 === 0;
+  const isRug = RUG_COLS.includes(c) && RUG_ROWS.includes(r);
+  const light = isRug ? '#C89060' : '#D4A574';
+  const dark  = isRug ? '#B88050' : '#C49060';
+  return el({
+    position: 'absolute', left: left+'px', top: top+'px',
+    width: TW+'px', height: TH+'px',
+    clipPath: `polygon(${TW/2}px 0px, ${TW}px ${TH/2}px, ${TW/2}px ${TH}px, 0px ${TH/2}px)`,
+    background: even ? light : dark,
+    zIndex: zF(c, r),
+  });
+}
+
+// ── IsoBox ────────────────────────────────────────────────────────────────────
+function isoBox(c, r, span, boxH, topC, leftC, rightC, decoFn) {
+  const { left: tl, top: tt } = ts(c, r);
+  const g  = boxGeo(span, boxH);
+  const wrap = el({ position:'absolute', left:(tl+g.ox)+'px', top:(tt-boxH)+'px', width:g.cW+'px', height:g.cH+'px', zIndex:zO(c,r), overflow:'visible', pointerEvents:'none' });
+  const rf = el({ position:'absolute', inset:0, clipPath:g.rc, background:rightC });
+  const lf = el({ position:'absolute', inset:0, clipPath:g.lc, background:leftC  });
+  const tf = el({ position:'absolute', inset:0, clipPath:g.tc, background:topC   });
+  wrap.appendChild(rf);
+  wrap.appendChild(lf);
+  wrap.appendChild(tf);
+  if (decoFn) decoFn(rf, lf, tf, g);
+  return wrap;
+}
+
+// ── Walls ─────────────────────────────────────────────────────────────────────
+const CR = `polygon(0% 0%, 100% 18.6%, 100% 100%, 0% 81.4%)`;  // back wall panel
+const CL = `polygon(100% 0%, 0% 18.6%, 0% 100%, 100% 81.4%)`; // left wall panel
+const BG = 'linear-gradient(160deg, #F5F0E0 0%, #EDE6D0 55%, #E4DCC8 100%)';
+const LG = 'linear-gradient(200deg, #EDE6D4 0%, #E0D8C4 55%, #D8D0BC 100%)';
+
+function wallPanel(idx, type, decoFn) {
+  let pL, pT, clip, grad;
+  if (type === 'back') {
+    const { left: tl, top: tt } = ts(idx, 0);
+    pL = tl + TW/2; pT = tt - WALL_H; clip = CR; grad = BG;
+  } else {
+    const { left: tl, top: tt } = ts(0, idx);
+    pL = tl; pT = tt - WALL_H; clip = CL; grad = LG;
+  }
+  const p = el({ position:'absolute', left:pL+'px', top:pT+'px', width:(TW/2)+'px', height:WALL_PH+'px', clipPath:clip, background:grad, zIndex:-5, overflow:'visible' });
+  p.appendChild(el({ position:'absolute', bottom:0, left:0, right:0, height:'2px', background:'rgba(180,160,120,0.25)', borderRadius:'1px' }));
+  if (decoFn) decoFn(p, WALL_PH);
+  return p;
+}
+
+// ── Art helpers ────────────────────────────────────────────────────────────────
+function artFrame(ph, frameColor, decoFn) {
+  const f = el({ position:'absolute', left:'2px', top:(ph*0.1)+'px', right:'2px', height:(ph*0.72)+'px', background:frameColor, borderRadius:'1px', overflow:'hidden' });
+  decoFn(f);
+  return f;
+}
+
+// ── Floor ─────────────────────────────────────────────────────────────────────
+function buildFloor(sc) {
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      sc.appendChild(tile(c, r));
+}
+
+// ── Walls + decorations ───────────────────────────────────────────────────────
+function buildWalls(sc) {
+  for (let c = 0; c < COLS; c++) {
+    sc.appendChild(wallPanel(c, 'back', (p, ph) => {
+      // Art #1 — Mondrian col 1
+      if (c === 1) {
+        p.appendChild(artFrame(ph, '#2A1808', f => {
+          f.appendChild(el({ position:'absolute', inset:'2px', background:'#F8F2E0' }));
+          f.appendChild(el({ position:'absolute', left:'2px', top:'2px', width:'48%', height:'58%', background:'#E84040', borderRight:'1px solid #2A1808' }));
+          f.appendChild(el({ position:'absolute', right:'2px', bottom:'2px', width:'38%', height:'44%', background:'#4488DD', borderLeft:'1px solid #2A1808' }));
+          f.appendChild(el({ position:'absolute', left:'2px', bottom:'2px', width:'44%', height:'34%', background:'#DDCC44', borderTop:'1px solid #2A1808' }));
+        }));
+      }
+      // Art #2 — Landscape col 11
+      if (c === 11) {
+        p.appendChild(artFrame(ph, '#1A1A1A', f => {
+          f.appendChild(el({ position:'absolute', inset:'2px', background:'linear-gradient(180deg, #7EC8E8 0%, #B8E8FF 100%)' }));
+          f.appendChild(el({ position:'absolute', left:'2px', right:'2px', bottom:'2px', height:'42%', background:'#44AA44', borderRadius:'2px 2px 0 0' }));
+          f.appendChild(el({ position:'absolute', right:'5px', top:'3px', width:'8px', height:'8px', background:'#FFEE44', borderRadius:'50%', boxShadow:'0 0 5px rgba(255,238,68,0.7)' }));
+        }));
+      }
+      // Digital clock col 7
+      if (c === 7) {
+        const clk = el({ position:'absolute', left:'1px', top:(ph*0.24)+'px', right:'1px', height:(ph*0.36)+'px', background:'#060610', borderRadius:'2px', border:'1px solid #182838', display:'flex', alignItems:'center', justifyContent:'center' });
+        const t = document.createElement('span');
+        t.textContent = '09:41';
+        Object.assign(t.style, { fontFamily:'monospace', fontSize:'6px', color:'#00FF41', textShadow:'0 0 4px #00FF41', letterSpacing:'0.1em' });
+        clk.appendChild(t);
+        p.appendChild(clk);
+      }
+    }));
+  }
+  for (let r = 0; r < ROWS; r++) {
+    sc.appendChild(wallPanel(r, 'left', (p, ph) => {
+      // Art #3 — Abstract stripes row 4
+      if (r === 4) {
+        p.appendChild(artFrame(ph, '#8B5E2E', f => {
+          f.appendChild(el({ position:'absolute', inset:'2px', background:'#F5ECD8' }));
+          f.appendChild(el({ position:'absolute', left:'2px', top:'25%', right:'2px', height:'15%', background:'rgba(232,64,64,0.7)' }));
+          f.appendChild(el({ position:'absolute', left:'2px', top:'44%', right:'2px', height:'11%', background:'rgba(68,136,221,0.7)' }));
+          f.appendChild(el({ position:'absolute', left:'2px', top:'60%', right:'2px', height:'9%',  background:'rgba(221,204,68,0.7)' }));
+        }));
+      }
+      // Notice board row 7
+      if (r === 7) {
+        const nb = el({ position:'absolute', left:'1px', top:(ph*0.1)+'px', right:'1px', height:(ph*0.74)+'px', background:'#C8A460', borderRadius:'2px', border:'1px solid #A08040', overflow:'hidden' });
+        [
+          {l:'8%', t:'8%', w:'46%', h:'35%', rot:'3deg',  c:'#FFFEF0'},
+          {l:'48%',t:'7%', w:'40%', h:'40%', rot:'-4deg', c:'#FFF8E0'},
+          {l:'10%',t:'50%',w:'40%', h:'32%', rot:'-2deg', c:'#F0FFF0'},
+          {l:'52%',t:'52%',w:'38%', h:'30%', rot:'5deg',  c:'#F0F0FF'},
+        ].forEach(p2 => {
+          const n = el({ position:'absolute', left:p2.l, top:p2.t, width:p2.w, height:p2.h, background:p2.c, transform:`rotate(${p2.rot})`, boxShadow:'1px 1px 2px rgba(0,0,0,0.18)' });
+          n.appendChild(el({ position:'absolute', left:'8%', top:'30%', right:'8%', height:'1px', background:'rgba(0,0,0,0.1)' }));
+          nb.appendChild(n);
+        });
+        [['#EE4444','27%','22%'],['#4444EE','64%','20%'],['#44BB44','26%','64%'],['#EECC22','66%','66%']].forEach(([c2,l,t]) => {
+          nb.appendChild(el({ position:'absolute', left:l, top:t, width:'4px', height:'4px', borderRadius:'50%', background:c2, transform:'translate(-50%,-50%)' }));
+        });
+        p.appendChild(nb);
+      }
+    }));
+  }
+}
+
+// ── Aquarium (N=7, col=2, row=0) ──────────────────────────────────────────────
+function buildAquarium(sc) {
+  const col=2, row=0, N=7, boxH=60;
+  const {left:tl, top:tt} = ts(col, row);
+  const g = boxGeo(N, boxH);
+  const cL = tl + g.ox, cT = tt - boxH;
+  const mid = g.cW / 2;  // 128
+
+  const wrap = el({ position:'absolute', left:cL+'px', top:cT+'px', width:g.cW+'px', height:g.cH+'px', zIndex:zO(col,row), pointerEvents:'none', filter:'drop-shadow(0 0 9px rgba(40,120,210,0.5))' });
+
+  // Left face
+  wrap.appendChild(el({ position:'absolute', inset:0, clipPath:g.lc, background:'#1A4060' }));
+
+  // Right face = glass window
+  const rf = el({ position:'absolute', inset:0, clipPath:g.rc, background:'#2A6888' });
+
+  // Water
+  const wt = el({ position:'absolute', left:(mid+2)+'px', top:(TH/2+2)+'px', right:'2px', bottom:'2px', background:'linear-gradient(180deg, rgba(18,72,155,0.7) 0%, rgba(8,44,112,0.6) 100%)', borderRadius:'1px', overflow:'hidden', animation:'pulse-water 4s ease-in-out infinite' });
+
+  // Glass reflection
+  wt.appendChild(el({ position:'absolute', left:'1px', top:'1px', width:'2px', height:'72%', background:'rgba(255,255,255,0.4)', borderRadius:'1px' }));
+
+  // Caustic shimmer
+  ['0s','-0.7s','-1.4s'].forEach((d, i) => {
+    wt.appendChild(el({ position:'absolute', left:(10+i*26)+'px', top:'3px', width:'13px', height:'3px', background:'rgba(255,255,255,0.2)', borderRadius:'2px', transformOrigin:'left center', animation:`water-shimmer 2s ease-in-out ${d} infinite` }));
+  });
+
+  // Shark
+  const shark = el({ position:'absolute', bottom:'20px', left:'5px', width:'30px', height:'13px', background:'#4A5A7A', borderRadius:'50% 30% 30% 50%', animation:'shark-swim 14s ease-in-out infinite' });
+  shark.appendChild(el({ position:'absolute', top:'-6px', left:'9px', width:0, height:0, borderLeft:'4px solid transparent', borderRight:'4px solid transparent', borderBottom:'7px solid #3A4A6A' }));
+  shark.appendChild(el({ position:'absolute', right:'-4px', top:'2px', width:0, height:0, borderTop:'4px solid #4A5A7A', borderBottom:'4px solid #4A5A7A', borderRight:'7px solid transparent' }));
+  shark.appendChild(el({ position:'absolute', left:'4px', top:'4px', width:'2px', height:'2px', background:'#0A0A16', borderRadius:'50%' }));
+  wt.appendChild(shark);
+
+  // Jellyfish
+  function mkJelly(lx, ty, sz, d) {
+    const bH = Math.round(sz*0.6);
+    const j = el({ position:'absolute', left:lx+'px', top:ty+'px', width:sz+'px', animation:`jelly-bob 3s ease-in-out ${d} infinite` });
+    j.appendChild(el({ position:'absolute', left:0, top:0, width:sz+'px', height:bH+'px', background:'rgba(210,155,255,0.72)', borderRadius:'50% 50% 0 0 / 100% 100% 0 0', boxShadow:'0 0 6px rgba(180,100,255,0.4)' }));
+    for (let i = 0; i < 5; i++) {
+      const tx = 2 + i * (sz-4)/4;
+      j.appendChild(el({ position:'absolute', left:tx+'px', top:bH+'px', width:'1px', height:'13px', background:'rgba(210,155,255,0.45)', animation:`jelly-tentacle 2.5s ease-in-out ${parseFloat(d)-i*0.18}s infinite` }));
+    }
+    return j;
+  }
+  wt.appendChild(mkJelly(25, 3,  17, '0s'));
+  wt.appendChild(mkJelly(68, 4,  13, '-1.5s'));
+
+  // Fish
+  function mkFish(bot, col2, anim, dur, d) {
+    const b = el({ position:'absolute', bottom:bot+'px', width:'10px', height:'6px', background:col2, borderRadius:'50% 50% 50% 50% / 60% 60% 40% 40%', animation:`${anim} ${dur}s linear ${d} infinite` });
+    b.appendChild(el({ position:'absolute', right:'-3px', top:'1px', width:0, height:0, borderTop:'3px solid transparent', borderBottom:'3px solid transparent', borderLeft:`4px solid ${col2}` }));
+    return b;
+  }
+  wt.appendChild(mkFish(9,  '#FF8844', 'fish-swim-a', 8,  '0s'));
+  wt.appendChild(mkFish(22, '#FFEE22', 'fish-swim-b', 10, '-4s'));
+  wt.appendChild(mkFish(15, '#FF44AA', 'fish-swim-c', 7,  '-2s'));
+
+  // Seaweed
+  [[3,13,'#2A8A4A','0s'],[20,9,'#3A9A5A','-1s'],[40,11,'#226A3A','-0.5s']].forEach(([x,h,c,d]) => {
+    wt.appendChild(el({ position:'absolute', bottom:0, left:x+'px', width:'2px', height:h+'px', background:c, borderRadius:'1px 1px 0 0', transformOrigin:'bottom center', animation:`seaweed-sway 2.8s ease-in-out ${d} infinite` }));
+  });
+
+  // Bubbles
+  [[5,3,3,'0s'],[14,5,2,'-0.5s'],[25,2,3,'-1.1s'],[35,8,2,'-1.7s'],[50,3,2,'-0.9s'],[62,1,3,'-1.4s']].forEach(([l,b,w,d]) => {
+    wt.appendChild(el({ position:'absolute', left:l+'px', bottom:b+'px', width:w+'px', height:w+'px', borderRadius:'50%', background:'rgba(255,255,255,0.55)', border:'1px solid rgba(255,255,255,0.3)', animation:`bubble-rise 2.5s ease-out ${d} infinite` }));
+  });
+
+  rf.appendChild(wt);
+  wrap.appendChild(rf);
+  // Top face — water surface
+  wrap.appendChild(el({ position:'absolute', inset:0, clipPath:g.tc, background:'linear-gradient(135deg, rgba(80,160,240,0.82) 0%, rgba(40,120,200,0.68) 100%)' }));
+  sc.appendChild(wrap);
+}
+
+// ── Bookshelf ─────────────────────────────────────────────────────────────────
+function buildBookshelf(sc, c, r) {
+  const bH=42, bks=['#E84040','#4488DD','#44BB44','#DDCC44','#8844CC','#EE8833','#AA3366','#4AABBB'];
+  sc.appendChild(isoBox(c, r, 2, bH, '#C8A068','#A07840','#8A6430', (rf,lf,tf,g) => {
+    const sw = Math.floor((g.cW/2 - 6) / bks.length);
+    bks.forEach((k,i) => rf.appendChild(el({ position:'absolute', left:(g.cW/2+3+i*sw)+'px', top:(TH/2+2)+'px', width:(sw-1)+'px', height:(bH-4)+'px', background:k, borderRadius:'0 1px 1px 0' })));
+    [0.33,0.66].forEach(p => rf.appendChild(el({ position:'absolute', left:(g.cW/2)+'px', right:0, top:(TH/2+bH*p)+'px', height:'2px', background:'#6A4820' })));
+    tf.appendChild(el({ position:'absolute', left:(g.cW/2+7)+'px', top:'3px', width:'11px', height:'11px', background:'linear-gradient(135deg,#4488DD 50%,#44AA44 50%)', borderRadius:'50%', border:'1px solid #2A5A8A', animation:'globe-spin 12s linear infinite' }));
+    tf.appendChild(el({ position:'absolute', left:(g.cW/2-14)+'px', top:'6px', width:'4px', height:'8px', background:'#8A6430', borderRadius:'1px' }));
+  }));
+}
+
+// ── Coffee station ────────────────────────────────────────────────────────────
+function buildCoffee(sc, c, r) {
+  sc.appendChild(isoBox(c, r, 2, 22, '#C8A068','#A07840','#8A6430'));
+  const mH=34;
+  const m = isoBox(c, r, 1, mH, '#C0945A','#5C3D2E','#4A2E1E', (rf,lf,tf) => {
+    rf.appendChild(el({ position:'absolute', right:'3px', top:(TH/2+4)+'px', width:'10px', height:(mH-8)+'px', background:'#0E0E18', borderRadius:'1px' }));
+    ['#FF4444','#44BB44','#FFEE44'].forEach((k,i) => rf.appendChild(el({ position:'absolute', right:'5px', top:(TH/2+7+i*8)+'px', width:'4px', height:'4px', borderRadius:'50%', background:k })));
+    tf.appendChild(el({ position:'absolute', left:(TW/2-4)+'px', top:'9px', width:'8px', height:'6px', background:'#F5EED8', borderRadius:'0 0 2px 2px', border:'1px solid #B0905A' }));
+  });
+  m.style.top = (parseInt(m.style.top) - 22) + 'px';
+  m.style.zIndex = zO(c, r) + 1;
+  // Steam on container (not inside clip-path)
+  [[28,'0s'],[33,'-1s']].forEach(([x,d]) => m.appendChild(el({ position:'absolute', left:x+'px', top:'-15px', width:'3px', height:'10px', background:'rgba(255,255,255,0.4)', borderRadius:'3px', animation:`steam-rise 2s ease-out ${d} infinite` })));
+  sc.appendChild(m);
+  // Mugs
+  const {left:tl2, top:tt2} = ts(c+1, r);
+  const mugs = el({ position:'absolute', left:(tl2+TW/2-14)+'px', top:(tt2-22-7)+'px', zIndex:zO(c+1,r)+1, pointerEvents:'none' });
+  [0,9,18].forEach(dx => mugs.appendChild(el({ position:'absolute', left:dx+'px', top:0, width:'8px', height:'7px', background:'#F5EED8', borderRadius:'0 0 2px 2px', border:'1px solid #B0905A' })));
+  sc.appendChild(mugs);
+}
+
+// ── Snack bar ─────────────────────────────────────────────────────────────────
+function buildSnackBar(sc, c, r) {
+  sc.appendChild(isoBox(c, r, 2, 22, '#C8A068','#A07840','#8A6430'));
+  const fH=38;
+  const fridge = isoBox(c+1, r, 1, fH, '#F0F4F8','#D0DEE8','#A8BCCC', (rf,lf,tf) => {
+    rf.appendChild(el({ position:'absolute', right:'4px', top:(TH/2+fH/2-9)+'px', width:'2px', height:'18px', background:'#7A8FA0', borderRadius:'1px' }));
+    [['#FF8844',2],['#44AAEE',7]].forEach(([k,lx]) => tf.appendChild(el({ position:'absolute', left:(TW/2+lx)+'px', top:'6px', width:'4px', height:'3px', background:k, borderRadius:'1px' })));
+  });
+  fridge.style.top    = (parseInt(fridge.style.top) - 22) + 'px';
+  fridge.style.zIndex = zO(c+1, r) + 1;
+  sc.appendChild(fridge);
+  // Bowl
+  const {left:tl0, top:tt0} = ts(c, r);
+  const bowl = el({ position:'absolute', left:(tl0+TW/2-10)+'px', top:(tt0-22-9)+'px', width:'28px', height:'9px', background:'#E8C878', borderRadius:'0 0 8px 8px', border:'1px solid #C0A040', zIndex:zO(c,r)+1, pointerEvents:'none' });
+  [['#E84040',3,-6],['#44BB44',11,-8],['#FFAA22',8,-5]].forEach(([k,x,y]) => bowl.appendChild(el({ position:'absolute', left:x+'px', top:y+'px', width:'7px', height:'7px', background:k, borderRadius:'50%' })));
+  sc.appendChild(bowl);
+}
+
+// ── Vending machines ──────────────────────────────────────────────────────────
+function buildVending(sc, c, r, type) {
+  const bc = type==='snack' ? '#CC2266' : '#2244CC';
+  const sc2 = type==='snack' ? '#AA1155' : '#1133AA';
+  const nc = type==='snack' ? '#FF44CC' : '#44AAFF';
+  const vH=46;
+  const v = isoBox(c, r, 1, vH, shade(bc,22), sc2, bc, (rf,lf,tf) => {
+    rf.appendChild(el({ position:'absolute', right:'2px', top:(TH/2+3)+'px', width:'15px', height:(vH-7)+'px', background:'#0A0A14', borderRadius:'1px', border:`1px solid ${nc}33` }));
+    [0,1,2].forEach(i => rf.appendChild(el({ position:'absolute', right:'19px', top:(TH/2+8+i*10)+'px', width:'4px', height:'4px', borderRadius:'50%', background:nc, boxShadow:`0 0 4px ${nc}`, animation:`vend-pulse 1.8s ease-in-out ${(i*-0.6).toFixed(1)}s infinite` })));
+  });
+  sc.appendChild(v);
+}
+
+// ── Sofa ──────────────────────────────────────────────────────────────────────
+function buildSofa(sc, c, r) {
+  sc.appendChild(isoBox(c, r, 2, 20, '#4AABBB','#3A8A9A','#2A6A7A', (rf,lf,tf,g) => {
+    tf.appendChild(el({ position:'absolute', left:(g.cW/2-22)+'px', top:'4px', width:'44px', height:'13px', background:'rgba(255,255,255,0.22)', borderRadius:'4px' }));
+    rf.appendChild(el({ position:'absolute', left:(g.cW/2)+'px', right:'2px', top:(TH/2)+'px', height:'10px', background:'#5BBCCC', borderRadius:'1px' }));
+    rf.appendChild(el({ position:'absolute', right:'2px', top:(TH/2)+'px', width:'4px', height:'18px', background:'#3A8A9A', borderRadius:'1px' }));
+  }));
+}
+
+// ── Armchair ──────────────────────────────────────────────────────────────────
+function buildArmchair(sc, c, r, color) {
+  const lc=shade(color,-22), rc=shade(color,-38);
+  sc.appendChild(isoBox(c, r, 1, 18, color, lc, rc, (rf,lf,tf) => {
+    tf.appendChild(el({ position:'absolute', left:(TW/2-12)+'px', top:'5px', width:'24px', height:'11px', background:'rgba(255,255,255,0.2)', borderRadius:'3px' }));
+    rf.appendChild(el({ position:'absolute', right:'3px', top:(TH/2)+'px', width:'4px', height:'14px', background:rc, borderRadius:'1px' }));
+  }));
+}
+
+// ── Café table & chair ────────────────────────────────────────────────────────
+function buildCafeTable(sc, c, r) {
+  sc.appendChild(isoBox(c, r, 1, 20, '#D4A870','#A07840','#8A6430', (rf,lf,tf) => {
+    tf.appendChild(el({ position:'absolute', left:(TW/2-11)+'px', top:'7px', width:'22px', height:'16px', background:'rgba(255,255,255,0.28)', borderRadius:'50%', border:'1px solid rgba(255,255,255,0.45)' }));
+  }));
+}
+function buildCafeChair(sc, c, r, color) {
+  const lc=shade(color,-22), rc=shade(color,-38);
+  sc.appendChild(isoBox(c, r, 1, 14, color, lc, rc));
+}
+
+// ── Plant ─────────────────────────────────────────────────────────────────────
+function buildPlant(sc, c, r, size) {
+  const cfg = {tall:[22,38,0.9], medium:[16,28,0.74], small:[10,18,0.58]}[size];
+  const [pH,lH,ls] = cfg;
+  sc.appendChild(isoBox(c, r, 1, pH, '#C46E4E','#A0583C','#8A4430'));
+  const {left:tl, top:tt} = ts(c, r);
+  const lw = Math.round(TW*ls);
+  const lv = el({ position:'absolute', left:(tl+TW/2-lw/2)+'px', top:(tt-pH-lH)+'px', width:lw+'px', height:lH+'px', zIndex:zO(c,r)+2, transformOrigin:'bottom center', animation:'plant-sway 4s ease-in-out infinite', pointerEvents:'none' });
+  ['#2A7A3A','#3A9A4A','#4ABB5A'].forEach((k,i) => lv.appendChild(el({ position:'absolute', left:(i*3)+'px', top:(i*5)+'px', width:(lw-i*6)+'px', height:(lH-i*5)+'px', background:k, borderRadius:'50% 50% 45% 45%' })));
+  sc.appendChild(lv);
+}
+
+// ── Zen fountain ──────────────────────────────────────────────────────────────
+function buildFountain(sc, c, r) {
+  const bH=30;
+  sc.appendChild(isoBox(c, r, 1, bH, '#7A7A7A','#5A5A5A','#4A4A4A', (rf,lf,tf) => {
+    [{w:24,h:12,l:20,t:5,k:'#808080'},{w:18,h:10,l:23,t:-1,k:'#787878'},{w:12,h:8,l:26,t:-7,k:'#727272'}]
+      .forEach(s => tf.appendChild(el({ position:'absolute', left:s.l+'px', top:s.t+'px', width:s.w+'px', height:s.h+'px', background:s.k, borderRadius:'6px 6px 4px 4px' })));
+    rf.appendChild(el({ position:'absolute', right:'4px', bottom:'3px', width:'22px', height:'6px', background:'rgba(80,160,220,0.4)', borderRadius:'50%' }));
+  }));
+  const {left:tl, top:tt} = ts(c, r);
+  const ov = el({ position:'absolute', left:(tl+TW/2-14)+'px', top:(tt-bH-6)+'px', width:'28px', height:'44px', zIndex:zO(c,r)+3, overflow:'visible', pointerEvents:'none' });
+  ov.appendChild(el({ position:'absolute', left:'13px', top:'2px', width:'3px', height:'11px', background:'rgba(130,200,255,0.72)', borderRadius:'2px', animation:'water-trickle 1.4s ease-in infinite' }));
+  for (let i=0; i<3; i++) ov.appendChild(el({ position:'absolute', left:'4px', bottom:'4px', width:'20px', height:'12px', borderRadius:'50%', border:'1px solid rgba(80,160,220,0.5)', animation:`ripple 2s ease-out ${(i*-0.65).toFixed(2)}s infinite` }));
+  sc.appendChild(ov);
+}
+
+// ── Character ─────────────────────────────────────────────────────────────────
+function buildChar(sc, c, r, opts) {
+  const {bc='#E84040',hc='#2A1A08',sk='#C9956A',glasses=false,cap=false,phones=false,bd='0s'} = opts||{};
+  const {left:tl, top:tt} = ts(c, r);
+  const wrap = el({ position:'absolute', left:(tl+20)+'px', top:(tt-28)+'px', width:'24px', height:'40px', zIndex:zS(c,r), pointerEvents:'none' });
+  wrap.appendChild(el({ position:'absolute', left:'-2px', bottom:'-2px', width:'28px', height:'8px', background:'rgba(0,0,0,0.3)', borderRadius:'50%', filter:'blur(3px)' }));
+  const bob = el({ position:'absolute', inset:0, animation:`char-bob 2.2s ease-in-out ${bd} infinite` });
+  // Shoes
+  bob.appendChild(el({ position:'absolute', left:'3px',  top:'34px', width:'6px', height:'4px', background:'#1A1010', borderRadius:'0 0 2px 2px' }));
+  bob.appendChild(el({ position:'absolute', left:'15px', top:'34px', width:'6px', height:'4px', background:'#1A1010', borderRadius:'0 0 2px 2px' }));
+  // Legs
+  bob.appendChild(el({ position:'absolute', left:'4px',  top:'24px', width:'5px', height:'10px', background:'#1E3060' }));
+  bob.appendChild(el({ position:'absolute', left:'15px', top:'24px', width:'5px', height:'10px', background:'#1E3060' }));
+  // Body
+  const body = el({ position:'absolute', left:'4px', top:'14px', width:'16px', height:'14px', background:bc, borderRadius:'3px' });
+  body.appendChild(el({ position:'absolute', left:'4px', bottom:'2px', width:'8px', height:'3px', background:shade(bc,-22), borderRadius:'1px' }));
+  bob.appendChild(body);
+  // Arms
+  bob.appendChild(el({ position:'absolute', left:'0',   top:'15px', width:'4px', height:'10px', background:bc, borderRadius:'2px' }));
+  bob.appendChild(el({ position:'absolute', right:'0',  top:'15px', width:'4px', height:'10px', background:bc, borderRadius:'2px' }));
+  // Hair
+  if (!cap) bob.appendChild(el({ position:'absolute', left:'6px', top:'2px', width:'12px', height:'6px', background:hc, borderRadius:'3px 3px 0 0' }));
+  // Head
+  const head = el({ position:'absolute', left:'6px', top:'5px', width:'12px', height:'12px', background:sk, borderRadius:'50%' });
+  const mkEye = l => { const e=el({ position:'absolute', left:l+'px', top:'4px', width:'3px', height:'3px', background:'white', borderRadius:'1px' }); e.appendChild(el({ position:'absolute', left:'1px', top:'1px', width:'1px', height:'1px', background:'#1A0A00' })); return e; };
+  head.appendChild(mkEye(2));
+  head.appendChild(mkEye(7));
+  head.appendChild(el({ position:'absolute', left:'4px', top:'9px', width:'4px', height:'1px', background:'#8A4A30', borderRadius:'1px' }));
+  if (glasses) {
+    head.appendChild(el({ position:'absolute', left:'1px', top:'3px', width:'4px', height:'5px', border:'1px solid #4A3A2A', borderRadius:'1px', background:'transparent' }));
+    head.appendChild(el({ position:'absolute', left:'7px', top:'3px', width:'4px', height:'5px', border:'1px solid #4A3A2A', borderRadius:'1px', background:'transparent' }));
+    head.appendChild(el({ position:'absolute', left:'5px', top:'5px', width:'2px', height:'1px', background:'#4A3A2A' }));
+  }
+  bob.appendChild(head);
+  if (cap) {
+    bob.appendChild(el({ position:'absolute', left:'5px', top:'2px', width:'14px', height:'6px', background:shade(bc,15), borderRadius:'3px 3px 0 0' }));
+    bob.appendChild(el({ position:'absolute', left:'4px', top:'7px', width:'16px', height:'3px', background:shade(bc,15), borderRadius:'0 0 1px 1px' }));
+  }
+  if (phones) {
+    bob.appendChild(el({ position:'absolute', left:'5px', top:'4px', width:'14px', height:'8px', border:'2px solid #2A2A2A', borderBottom:'none', borderRadius:'8px 8px 0 0', background:'transparent' }));
+    bob.appendChild(el({ position:'absolute', left: '4px', top:'7px', width:'5px', height:'6px', background:'#2A2A2A', borderRadius:'2px' }));
+    bob.appendChild(el({ position:'absolute', right:'4px', top:'7px', width:'5px', height:'6px', background:'#2A2A2A', borderRadius:'2px' }));
+  }
+  wrap.appendChild(bob);
+  sc.appendChild(wrap);
+}
+
+// ── Assemble scene ─────────────────────────────────────────────────────────────
+function buildScene() {
+  const sc = document.getElementById('scene');
+  sc.style.width  = GW + 'px';
+  sc.style.height = GH + 'px';
+
+  buildFloor(sc);
+  buildWalls(sc);
+  buildAquarium(sc);
+
+  buildBookshelf(sc, 0, 1);
+  buildCoffee(sc, 1, 3);
+  buildSnackBar(sc, 9, 3);
+  buildVending(sc, 11, 3, 'snack');
+  buildVending(sc, 12, 3, 'drinks');
+
+  buildArmchair(sc, 2, 5, '#E84040');
+  buildCafeTable(sc, 4, 5);
+  buildArmchair(sc, 6, 5, '#DDCC44');
+  buildSofa(sc, 3, 6);
+  buildCafeChair(sc, 4, 6, '#8844CC');
+  buildCafeChair(sc, 5, 6, '#44AABB');
+
+  buildFountain(sc, 11, 7);
+
+  buildPlant(sc, 1, 2, 'tall');
+  buildPlant(sc, 0, 5, 'medium');
+  buildPlant(sc, 7, 6, 'medium');
+  buildPlant(sc, 10, 5, 'small');
+  buildPlant(sc, 13, 5, 'small');
+
+  buildChar(sc, 3, 7, { bc:'#E84040', hc:'#2A1A08', sk:'#C9956A', bd:'0s' });
+  buildChar(sc, 5, 5, { bc:'#4488DD', hc:'#E8C840', sk:'#D4956A', glasses:true, bd:'-0.7s' });
+  buildChar(sc, 2, 4, { bc:'#44BB44', hc:'#1A1A1A', sk:'#7A4A2A', phones:true,  bd:'-1.4s' });
+  buildChar(sc, 10, 4,{ bc:'#8844CC', hc:'#8B4513', sk:'#B8834A', cap:true,     bd:'-2.1s' });
+  buildChar(sc, 6, 7, { bc:'#DDCC44', hc:'#C8A870', sk:'#F0C8A0', bd:'-2.8s' });
+}
+
+// ── Fit to window ──────────────────────────────────────────────────────────────
+function fit() {
+  const s = Math.min(window.innerWidth/GW, window.innerHeight/GH) * 0.92;
+  document.getElementById('scene').style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+
+document.addEventListener('DOMContentLoaded', () => { buildScene(); fit(); window.addEventListener('resize', fit); });
+</script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+{
+  "name": "gbot-command-center",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"node --env-file .env server/index.js\" \"vite\" --names \"server,vite\" --prefix-colors \"cyan,magenta\"",
+    "dev:ui": "vite",
+    "dev:server": "node --env-file .env server/index.js",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0",
+    "concurrently": "^8.2.2",
+    "express": "^4.21.0",
+    "framer-motion": "^11.0.0",
+    "lucide-react": "^0.400.0",
+    "prisma": "5.22.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.0",
+    "recharts": "^3.7.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "dotenv": "^17.3.1",
+    "postcss": "^8.4.41",
+    "tailwindcss": "^3.4.10",
+    "tsx": "^4.21.0",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.2"
+  }
+}

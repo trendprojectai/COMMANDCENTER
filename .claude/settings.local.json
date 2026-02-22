@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite build:*)",
+      "Bash(npm run build:*)",
+      "Bash(cat:*)",
+      "Bash(node --version:*)",
+      "Bash(node --env-file:*)",
+      "Bash(open:*)"
+    ]
+  }
+}

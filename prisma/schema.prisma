@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model VideoJob {
+  id              String         @id @default(cuid())
+  accountId       String
+  workflowRunId   String?
+  title           String?
+  status          String         @default("READY_FOR_REVIEW")
+  videoUrl        String?
+  thumbUrl        String?
+  durationSeconds Int?
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  captions        VideoCaption[]
+  publishes       PublishJob[]
+}
+
+model VideoCaption {
+  id              String   @id @default(cuid())
+  videoJobId      String
+  captionText     String
+  stylePreset     String   @default("bold-white")
+  position        String   @default("bottom")
+  safeArea        Boolean  @default(true)
+  burnedVideoUrl  String?
+  burnStatus      String   @default("queued")
+  createdAt       DateTime @default(now())
+  videoJob        VideoJob @relation(fields: [videoJobId], references: [id], onDelete: Cascade)
+}
+
+model PublishJob {
+  id             String    @id @default(cuid())
+  videoJobId     String
+  platform       String
+  publishStatus  String    @default("queued")
+  platformPostId String?
+  scheduledFor   DateTime?
+  caption        String?
+  createdAt      DateTime  @default(now())
+  videoJob       VideoJob  @relation(fields: [videoJobId], references: [id], onDelete: Cascade)
+}
