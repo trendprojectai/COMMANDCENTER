@@ -10,6 +10,10 @@ const PORT = process.env.PORT ?? 3001;
 const N8N_API_URL = process.env.N8N_API_URL ?? '';
 const N8N_API_KEY = process.env.N8N_API_KEY ?? '';
 
+// In-memory VideoJob store — survives hot reloads
+globalThis.__videoJobStore ??= new Map();
+const videoJobStore = globalThis.__videoJobStore;
+
 const app = express();
 app.use(express.json());
 
@@ -599,29 +603,29 @@ app.get('/api/video-jobs', async (req, res) => {
   }
 });
 
-app.post('/api/video-jobs', async (req, res) => {
+app.post('/api/video-jobs', (req, res) => {
   const { accountId, title, workflowRunId, videoUrl, thumbUrl, durationSeconds, status, notes } = req.body ?? {};
   if (!accountId) {
     return res.status(400).json({ error: 'accountId is required' });
   }
-  try {
-    const job = await prisma.videoJob.create({
-      data: {
-        accountId,
-        title:           title ?? null,
-        workflowRunId:   workflowRunId ?? null,
-        status:          status ?? 'READY_FOR_REVIEW',
-        videoUrl:        videoUrl ?? null,
-        thumbUrl:        thumbUrl ?? null,
-        durationSeconds: durationSeconds != null ? Number(durationSeconds) : null,
-        notes:           notes ?? null,
-      },
-    });
-    res.status(201).json({ job });
-  } catch (e) {
-    console.error('[video-jobs POST]', e);
-    res.status(500).json({ error: e.message });
-  }
+  const now = new Date().toISOString();
+  const job = {
+    id: crypto.randomUUID(),
+    accountId,
+    workflowRunId:   workflowRunId ?? null,
+    title:           title ?? null,
+    status:          status ?? 'READY_FOR_REVIEW',
+    videoUrl:        videoUrl ?? null,
+    thumbUrl:        thumbUrl ?? null,
+    durationSeconds: durationSeconds != null ? Number(durationSeconds) : null,
+    notes:           notes ?? null,
+    createdAt: now,
+    updatedAt: now,
+    captions: [],
+    publishes: [],
+  };
+  videoJobStore.set(job.id, job);
+  res.status(201).json({ job });
 });
 
 app.get('/api/video-jobs/:id', async (req, res) => {
@@ -640,22 +644,19 @@ app.get('/api/video-jobs/:id', async (req, res) => {
   }
 });
 
-app.patch('/api/video-jobs/:id', async (req, res) => {
+app.patch('/api/video-jobs/:id', (req, res) => {
+  const job = videoJobStore.get(req.params.id);
+  if (!job) return res.status(404).json({ error: 'not found' });
   const { status, notes, title, videoUrl, thumbUrl, durationSeconds } = req.body ?? {};
-  try {
-    const data = {};
-    if (status          != null) data.status          = status;
-    if (notes           != null) data.notes           = notes;
-    if (title           != null) data.title           = title;
-    if (videoUrl        != null) data.videoUrl        = videoUrl;
-    if (thumbUrl        != null) data.thumbUrl        = thumbUrl;
-    if (durationSeconds != null) data.durationSeconds = Number(durationSeconds);
-    const job = await prisma.videoJob.update({ where: { id: req.params.id }, data });
-    res.json({ job });
-  } catch (e) {
-    if (e.code === 'P2025') return res.status(404).json({ error: 'not found' });
-    res.status(500).json({ error: e.message });
-  }
+  if (status          != null) job.status          = status;
+  if (notes           != null) job.notes           = notes;
+  if (title           != null) job.title           = title;
+  if (videoUrl        != null) job.videoUrl        = videoUrl;
+  if (thumbUrl        != null) job.thumbUrl        = thumbUrl;
+  if (durationSeconds != null) job.durationSeconds = Number(durationSeconds);
+  job.updatedAt = new Date().toISOString();
+  videoJobStore.set(job.id, job);
+  res.json({ job });
 });
 
 app.post('/api/burn-in', async (req, res) => {
